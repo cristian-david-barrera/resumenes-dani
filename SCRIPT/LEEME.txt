@@ -1,0 +1,58 @@
+PROYECTO DANIELA - SCRIPTS
+==========================
+
+Configuracion PREVIA en una PC nueva (importante)
+-------------------------------------------------
+Antes de ACTUALIZAR / INICIAR, en esa PC tenes que tener:
+
+1. Node.js 20 LTS
+   - Descargar: https://nodejs.org
+   - Durante la instalacion: marcar "Add to PATH"
+   - Despues: cerrar sesion o reiniciar la PC
+
+2. PostgreSQL
+   - Instalado como servicio de Windows
+   - Anota la contraseña del usuario postgres
+
+3. (Recomendado) Doble clic en: VERIFICAR REQUISITOS.bat
+   - Te dice que falta de forma clara
+
+NO copies la carpeta node_modules desde la otra PC.
+En la PC nueva se reinstala con ACTUALIZAR SISTEMA.
+
+Primera vez en una PC nueva
+---------------------------
+1. Copiar el proyecto (sin depender de node_modules viejos)
+2. Ejecutar VERIFICAR REQUISITOS.bat
+3. Si falta algo, instalarlo y reiniciar
+4. Abrir backend\.env y poner la contraseña de PostgreSQL de ESA PC
+5. Doble clic en ACTUALIZAR SISTEMA.bat
+6. Doble clic en INICIAR SISTEMA.bat
+
+Uso diario
+----------
+- INICIAR SISTEMA.bat   -> enciende PostgreSQL, API y la pantalla web
+- DETENER SISTEMA.bat   -> cierra backend y frontend
+
+Cuando llevas una actualizacion
+-------------------------------
+1. Copiar/reemplazar los archivos nuevos del proyecto
+2. Doble clic en ACTUALIZAR SISTEMA.bat
+3. Doble clic en INICIAR SISTEMA.bat
+
+Direcciones
+-----------
+- Pantalla:  http://localhost:5173
+- API:       http://localhost:3001
+- Salud API: http://localhost:3001/api/health
+- Salud DB:  http://localhost:3001/api/db-health
+
+Notas
+-----
+- Backend y frontend se inician ocultos (sin ventanas negras).
+  Para apagarlos usa siempre DETENER SISTEMA.bat.
+- Si algo no abre, revisa SCRIPT\logs\
+- Si un comando "no se reconoce", casi seguro falta Node/PostgreSQL
+  en el PATH o no reiniciaste despues de instalarlos.
+- Si PostgreSQL no arranca, ejecuta como Administrador o inicia el
+  servicio desde "Servicios" de Windows.

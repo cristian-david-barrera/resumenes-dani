@@ -1,0 +1,8 @@
+
+> backend@1.0.0 start
+> node dist/index.js
+
+◇ injected env (2) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Conectado a PostgreSQL (daniela)
+API escuchando en http://localhost:3001
