@@ -23,10 +23,12 @@ export type BloqueAdjunto = {
   etiqueta: string
   texto: string
   adjunto: File | null
-  /** Porcentaje del ancho del adjunto en el PDF (30-100). */
+  /** Porcentaje del ancho del adjunto en el PDF (30-200). */
   escalaAncho: number
-  /** Porcentaje del alto del adjunto en el PDF (30-100). */
+  /** Porcentaje del alto del adjunto en el PDF (30-200). */
   escalaAlto: number
+  /** Si true, este bloque empieza en una página nueva. */
+  nuevaPaginaAntes: boolean
   estilo: EstiloFuente
 }
 
@@ -38,6 +40,7 @@ export type BloqueEstadoCuenta = {
   adjunto: File | null
   escalaAncho: number
   escalaAlto: number
+  nuevaPaginaAntes: boolean
   estilo: EstiloFuente
   estiloDetalle: EstiloFuente
 }
@@ -52,6 +55,8 @@ export type DatosFormulario = {
   adjuntoResumen: File | null
   escalaResumenAncho: number
   escalaResumenAlto: number
+  /** Si true, RESUMEN (y su adjunto) empiezan en una página nueva. */
+  nuevaPaginaAntesResumen: boolean
   comprobantes: BloqueAdjunto[]
   facturaciones: BloqueAdjunto[]
   /**
@@ -93,6 +98,7 @@ export function crearBloqueAdjunto(
     adjunto: null,
     escalaAncho: 100,
     escalaAlto: 100,
+    nuevaPaginaAntes: false,
     estilo: { ...estiloFuenteInicial, tamanio: 12, negrita: true },
   }
 }
@@ -107,6 +113,7 @@ export function crearBloqueEstadoCuenta(
     adjunto: null,
     escalaAncho: 100,
     escalaAlto: 100,
+    nuevaPaginaAntes: false,
     estilo: { ...estiloFuenteInicial, tamanio: 12, negrita: true },
     estiloDetalle: { ...estiloFuenteInicial, tamanio: 11 },
   }
@@ -130,6 +137,7 @@ export const formularioInicial: DatosFormulario = {
   adjuntoResumen: null,
   escalaResumenAncho: 100,
   escalaResumenAlto: 100,
+  nuevaPaginaAntesResumen: false,
   comprobantes: [crearBloqueAdjunto(ETIQUETA_PAGO_ARCA, 'pago-arca')],
   facturaciones: [crearBloqueAdjunto(ETIQUETA_FACTURACION, 'facturacion-1')],
   textoSinFacturacion: 'SIN FACTURACION',

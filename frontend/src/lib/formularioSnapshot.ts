@@ -46,6 +46,7 @@ export type DatosFormularioGuardado = {
   adjuntoResumen: ArchivoGuardado | null
   escalaResumenAncho?: number
   escalaResumenAlto?: number
+  nuevaPaginaAntesResumen?: boolean
   comprobantes: BloqueAdjuntoGuardado[]
   facturaciones: BloqueAdjuntoGuardado[]
   textoSinFacturacion: string
@@ -100,6 +101,7 @@ export async function serializarFormulario(
     adjuntoResumen: await serializarArchivo(datos.adjuntoResumen),
     escalaResumenAncho: datos.escalaResumenAncho,
     escalaResumenAlto: datos.escalaResumenAlto,
+    nuevaPaginaAntesResumen: datos.nuevaPaginaAntesResumen,
     comprobantes: await Promise.all(
       datos.comprobantes.map(async (bloque) => ({
         id: bloque.id,
@@ -107,6 +109,7 @@ export async function serializarFormulario(
         texto: bloque.texto,
         escalaAncho: bloque.escalaAncho,
         escalaAlto: bloque.escalaAlto,
+        nuevaPaginaAntes: bloque.nuevaPaginaAntes,
         estilo: clonarEstilo(bloque.estilo),
         adjunto: await serializarArchivo(bloque.adjunto),
       })),
@@ -118,6 +121,7 @@ export async function serializarFormulario(
         texto: bloque.texto,
         escalaAncho: bloque.escalaAncho,
         escalaAlto: bloque.escalaAlto,
+        nuevaPaginaAntes: bloque.nuevaPaginaAntes,
         estilo: clonarEstilo(bloque.estilo),
         adjunto: await serializarArchivo(bloque.adjunto),
       })),
@@ -130,6 +134,7 @@ export async function serializarFormulario(
         detalle: bloque.detalle,
         escalaAncho: bloque.escalaAncho,
         escalaAlto: bloque.escalaAlto,
+        nuevaPaginaAntes: bloque.nuevaPaginaAntes,
         estilo: clonarEstilo(bloque.estilo),
         estiloDetalle: clonarEstilo(bloque.estiloDetalle),
         adjunto: await serializarArchivo(bloque.adjunto),
@@ -154,6 +159,7 @@ export function deserializarFormulario(
           etiqueta: bloque.etiqueta,
           texto: bloque.texto,
           ...leerEscalas(bloque),
+          nuevaPaginaAntes: Boolean(bloque.nuevaPaginaAntes),
           estilo: clonarEstilo(bloque.estilo),
           adjunto: archivoDesdeGuardado(bloque.adjunto),
         }))
@@ -166,6 +172,7 @@ export function deserializarFormulario(
           etiqueta: bloque.etiqueta,
           texto: bloque.texto,
           ...leerEscalas(bloque),
+          nuevaPaginaAntes: Boolean(bloque.nuevaPaginaAntes),
           estilo: clonarEstilo(bloque.estilo),
           adjunto: archivoDesdeGuardado(bloque.adjunto),
         }))
@@ -178,6 +185,7 @@ export function deserializarFormulario(
           texto: bloque.texto,
           detalle: bloque.detalle,
           ...leerEscalas(bloque),
+          nuevaPaginaAntes: Boolean(bloque.nuevaPaginaAntes),
           estilo: clonarEstilo(bloque.estilo),
           estiloDetalle: clonarEstilo(bloque.estiloDetalle),
           adjunto: archivoDesdeGuardado(bloque.adjunto),
@@ -191,6 +199,7 @@ export function deserializarFormulario(
     adjuntoResumen: archivoDesdeGuardado(guardado.adjuntoResumen),
     escalaResumenAncho: guardado.escalaResumenAncho ?? 100,
     escalaResumenAlto: guardado.escalaResumenAlto ?? 100,
+    nuevaPaginaAntesResumen: Boolean(guardado.nuevaPaginaAntesResumen),
     comprobantes:
       comprobantes.length > 0
         ? comprobantes

@@ -428,6 +428,20 @@ function App() {
                       ? 'Cambiar archivo'
                       : 'Cargar archivo o captura'}
                   </button>
+                  <button
+                    type="button"
+                    className={`btn-pagina-nueva${bloque.nuevaPaginaAntes ? ' active' : ''}`}
+                    title="Si está activo, este bloque empieza en una página nueva del PDF"
+                    onClick={() =>
+                      actualizarBloque(grupo, bloque.id, {
+                        nuevaPaginaAntes: !bloque.nuevaPaginaAntes,
+                      })
+                    }
+                  >
+                    {bloque.nuevaPaginaAntes
+                      ? 'Página nueva: sí'
+                      : 'Empezar en página nueva'}
+                  </button>
                   <span className="adjunto-nombre">
                     {bloque.adjunto ? bloque.adjunto.name : 'Sin archivo'}
                   </span>
@@ -536,6 +550,21 @@ function App() {
                   {datos.adjuntoResumen
                     ? 'Cambiar archivo'
                     : 'Cargar archivo o captura'}
+                </button>
+                <button
+                  type="button"
+                  className={`btn-pagina-nueva${datos.nuevaPaginaAntesResumen ? ' active' : ''}`}
+                  title="Si está activo, RESUMEN empieza en una página nueva del PDF"
+                  onClick={() =>
+                    setDatos((prev) => ({
+                      ...prev,
+                      nuevaPaginaAntesResumen: !prev.nuevaPaginaAntesResumen,
+                    }))
+                  }
+                >
+                  {datos.nuevaPaginaAntesResumen
+                    ? 'Página nueva: sí'
+                    : 'Empezar en página nueva'}
                 </button>
                 <span className="adjunto-nombre">
                   {datos.adjuntoResumen
@@ -653,6 +682,20 @@ function App() {
                       {estado.adjunto
                         ? 'Cambiar archivo'
                         : 'Cargar archivo o captura'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn-pagina-nueva${estado.nuevaPaginaAntes ? ' active' : ''}`}
+                      title="Si está activo, este estado de cuenta empieza en una página nueva del PDF"
+                      onClick={() =>
+                        actualizarEstadoCuenta(estado.id, {
+                          nuevaPaginaAntes: !estado.nuevaPaginaAntes,
+                        })
+                      }
+                    >
+                      {estado.nuevaPaginaAntes
+                        ? 'Página nueva: sí'
+                        : 'Empezar en página nueva'}
                     </button>
                     <span className="adjunto-nombre">
                       {estado.adjunto ? estado.adjunto.name : 'Sin archivo'}

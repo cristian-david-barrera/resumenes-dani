@@ -292,6 +292,31 @@
   background: #fff;
 }
 
+.btn-pagina-nueva {
+  min-height: 2.2rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px dashed rgba(11, 61, 46, 0.35);
+  background: transparent;
+  color: #3d5248;
+  font-family: 'Manrope', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.btn-pagina-nueva:hover {
+  border-color: #0b3d2e;
+  color: #0b3d2e;
+}
+
+.btn-pagina-nueva.active {
+  border-style: solid;
+  border-color: #0b3d2e;
+  background: rgba(11, 61, 46, 0.08);
+  color: #0b3d2e;
+}
+
 .adjunto-nombre {
   font-size: 0.78rem;
   font-weight: 500;

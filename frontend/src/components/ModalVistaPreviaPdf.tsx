@@ -212,8 +212,8 @@ export function ModalVistaPreviaPdf({
         {panelTamanosAbierto && ajustesComprobantes.length > 0 ? (
           <div className="ajustes-comprobantes">
             <p className="ajuste-comprobante-ayuda">
-              Ajustá ancho y alto por separado. Al 100% usa el máximo de la
-              página. Al soltar se actualiza la vista previa.
+              Ajustá ancho y alto por separado (30% a 200%). Al soltar se
+              actualiza la vista previa.
             </p>
             {ajustesComprobantes.map((item) => {
               const escala = escalasLocales[item.id] ?? {
@@ -234,7 +234,7 @@ export function ModalVistaPreviaPdf({
                     id={idAncho}
                     type="range"
                     min={30}
-                    max={100}
+                    max={200}
                     step={5}
                     value={escala.ancho}
                     disabled={regenerando}
@@ -276,7 +276,7 @@ export function ModalVistaPreviaPdf({
                     id={idAlto}
                     type="range"
                     min={30}
-                    max={100}
+                    max={200}
                     step={5}
                     value={escala.alto}
                     disabled={regenerando}
