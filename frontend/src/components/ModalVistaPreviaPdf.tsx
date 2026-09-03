@@ -165,10 +165,8 @@ export function ModalVistaPreviaPdf({
       descargarPdf(urlPdf, archivo)
       setMensaje(
         historialEditando
-          ? 'PDF actualizado en el historial'
-          : carpetaId
-            ? 'PDF descargado y guardado en la carpeta'
-            : 'PDF descargado y guardado en el historial',
+          ? 'PDF actualizado en Documentos\\resumenes'
+          : 'PDF guardado en Documentos\\resumenes (no se pierde al actualizar)',
       )
       onGuardadoEnHistorial?.()
     } catch (err) {

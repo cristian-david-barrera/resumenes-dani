@@ -49,6 +49,8 @@ Direcciones
 
 Notas
 -----
+- Los PDF del historial se guardan en Documentos\resumenes (fuera del
+  proyecto). Asi no se pierden al actualizar o reemplazar el codigo.
 - Backend y frontend se inician ocultos (sin ventanas negras).
   Para apagarlos usa siempre DETENER SISTEMA.bat.
 - Si algo no abre, revisa SCRIPT\logs\

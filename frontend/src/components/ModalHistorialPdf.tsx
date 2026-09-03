@@ -323,8 +323,8 @@ export function ModalHistorialPdf({ abierto, onCerrar, onEditar }: Props) {
 
         <p className="historial-ayuda">
           {dentroDeCarpeta
-            ? 'PDF guardados en esta carpeta. Podés editarlos (vuelven al formulario), renombrarlos, abrirlos o descargarlos.'
-            : 'Organizá por carpetas (por persona u otro criterio). Dentro de cada una guardás los PDF con el nombre que quieras.'}
+            ? 'PDF de esta carpeta (guardados en Documentos\\resumenes). Podés editarlos, renombrarlos, abrirlos o descargarlos.'
+            : 'Se guardan en Documentos\\resumenes, así no se pierden al actualizar el sistema. Organizá por carpetas (persona u otro criterio).'}
         </p>
 
         {dentroDeCarpeta ? (
