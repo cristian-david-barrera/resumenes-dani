@@ -266,17 +266,43 @@ function App() {
     }
   }
 
-  async function onEscalaBloqueChange(id: string, escala: number) {
+  async function onEscalaAdjuntoChange(
+    id: string,
+    eje: 'ancho' | 'alto',
+    valor: number,
+  ) {
     const siguientes: DatosFormulario = {
       ...datos,
+      escalaResumenAncho:
+        id === 'resumen' && eje === 'ancho' ? valor : datos.escalaResumenAncho,
+      escalaResumenAlto:
+        id === 'resumen' && eje === 'alto' ? valor : datos.escalaResumenAlto,
       comprobantes: datos.comprobantes.map((item) =>
-        item.id === id ? { ...item, escala } : item,
+        item.id === id
+          ? {
+              ...item,
+              escalaAncho: eje === 'ancho' ? valor : item.escalaAncho,
+              escalaAlto: eje === 'alto' ? valor : item.escalaAlto,
+            }
+          : item,
       ),
       facturaciones: datos.facturaciones.map((item) =>
-        item.id === id ? { ...item, escala } : item,
+        item.id === id
+          ? {
+              ...item,
+              escalaAncho: eje === 'ancho' ? valor : item.escalaAncho,
+              escalaAlto: eje === 'alto' ? valor : item.escalaAlto,
+            }
+          : item,
       ),
       estadosCuenta: datos.estadosCuenta.map((item) =>
-        item.id === id ? { ...item, escala } : item,
+        item.id === id
+          ? {
+              ...item,
+              escalaAncho: eje === 'ancho' ? valor : item.escalaAncho,
+              escalaAlto: eje === 'alto' ? valor : item.escalaAlto,
+            }
+          : item,
       ),
     }
     setDatos(siguientes)
@@ -309,13 +335,25 @@ function App() {
           : null
 
   const todosBloques = [
+    ...(datos.adjuntoResumen
+      ? [
+          {
+            id: 'resumen',
+            etiqueta: 'RESUMEN',
+            adjunto: datos.adjuntoResumen,
+            escalaAncho: datos.escalaResumenAncho,
+            escalaAlto: datos.escalaResumenAlto,
+          },
+        ]
+      : []),
     ...datos.comprobantes,
     ...datos.facturaciones,
     ...datos.estadosCuenta.map((item) => ({
       id: item.id,
       etiqueta: ETIQUETA_ESTADO_CUENTA,
       adjunto: item.adjunto,
-      escala: item.escala,
+      escalaAncho: item.escalaAncho,
+      escalaAlto: item.escalaAlto,
     })),
   ]
   const conteoPorEtiqueta: Record<string, number> = {}
@@ -331,7 +369,8 @@ function App() {
       return {
         id: item.id,
         tipo: total > 1 ? `${item.etiqueta} (${numero})` : item.etiqueta,
-        escala: item.escala,
+        escalaAncho: item.escalaAncho,
+        escalaAlto: item.escalaAlto,
       }
     })
 
@@ -715,8 +754,8 @@ function App() {
         historialEditando={historialEditando}
         regenerando={regenerandoPreview}
         ajustesComprobantes={ajustesComprobantes}
-        onEscalaComprobanteChange={(id, escala) => {
-          void onEscalaBloqueChange(id, escala)
+        onEscalaComprobanteChange={(id, eje, valor) => {
+          void onEscalaAdjuntoChange(id, eje, valor)
         }}
         onCerrar={cerrarPreview}
         onGuardadoEnHistorial={() => {

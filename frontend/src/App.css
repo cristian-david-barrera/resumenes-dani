@@ -775,6 +775,13 @@
   color: #24352d;
 }
 
+.ajuste-comprobante-titulo {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.88rem;
+  color: #14201b;
+}
+
 .ajuste-comprobante input[type='range'] {
   width: 100%;
   accent-color: #0b3d2e;

@@ -52,6 +52,9 @@ Notas
 - Backend y frontend se inician ocultos (sin ventanas negras).
   Para apagarlos usa siempre DETENER SISTEMA.bat.
 - Si algo no abre, revisa SCRIPT\logs\
+- Si ves errores raros tipo "cho", "et", "OOT", "Proyecto" o "C:\proyecto"
+  (comandos cortados o rutas partidas), estas usando una copia vieja de
+  los .bat. Copia de nuevo toda la carpeta SCRIPT.
 - Si un comando "no se reconoce", casi seguro falta Node/PostgreSQL
   en el PATH o no reiniciaste despues de instalarlos.
 - Si PostgreSQL no arranca, ejecuta como Administrador o inicia el

@@ -1,14 +1,15 @@
 @echo off
 REM Recarga rutas tipicas de Node.js y PostgreSQL en esta sesion.
-REM Se usa al inicio de ACTUALIZAR / INICIAR para PCs recien instaladas.
+REM IMPORTANTE: no usar bloques con parentesis aqui. %ProgramFiles(x86)%
+REM rompe el parser de cmd si esta dentro de IF (...).
 
-set "PATH=%ProgramFiles%\nodejs;%LOCALAPPDATA%\Programs\nodejs;%APPDATA%\npm;%PATH%"
+set "PF=%ProgramFiles%"
+set "PF86=%ProgramFiles(x86)%"
 
-for %%V in (18 19 20 21 22 17 16 15 14) do (
-  if exist "%ProgramFiles%\PostgreSQL\%%V\bin\psql.exe" (
-    set "PATH=%ProgramFiles%\PostgreSQL\%%V\bin;%PATH%"
-  )
-  if exist "%ProgramFiles(x86)%\PostgreSQL\%%V\bin\psql.exe" (
-    set "PATH=%ProgramFiles(x86)%\PostgreSQL\%%V\bin;%PATH%"
-  )
-)
+if exist "%PF%\nodejs\node.exe" set "PATH=%PF%\nodejs;%PATH%"
+if exist "%PF86%\nodejs\node.exe" set "PATH=%PF86%\nodejs;%PATH%"
+if exist "%LOCALAPPDATA%\Programs\nodejs\node.exe" set "PATH=%LOCALAPPDATA%\Programs\nodejs;%PATH%"
+if exist "%APPDATA%\npm" set "PATH=%APPDATA%\npm;%PATH%"
+
+for %%V in (24 23 22 21 20 19 18 17 16 15 14) do if exist "%PF%\PostgreSQL\%%V\bin\psql.exe" set "PATH=%PF%\PostgreSQL\%%V\bin;%PATH%"
+for %%V in (24 23 22 21 20 19 18 17 16 15 14) do if exist "%PF86%\PostgreSQL\%%V\bin\psql.exe" set "PATH=%PF86%\PostgreSQL\%%V\bin;%PATH%"

@@ -23,8 +23,10 @@ export type BloqueAdjunto = {
   etiqueta: string
   texto: string
   adjunto: File | null
-  /** Porcentaje de tamaño del adjunto en el PDF (30-100). */
-  escala: number
+  /** Porcentaje del ancho del adjunto en el PDF (30-100). */
+  escalaAncho: number
+  /** Porcentaje del alto del adjunto en el PDF (30-100). */
+  escalaAlto: number
   estilo: EstiloFuente
 }
 
@@ -34,7 +36,8 @@ export type BloqueEstadoCuenta = {
   texto: string
   detalle: string
   adjunto: File | null
-  escala: number
+  escalaAncho: number
+  escalaAlto: number
   estilo: EstiloFuente
   estiloDetalle: EstiloFuente
 }
@@ -47,6 +50,8 @@ export type DatosFormulario = {
   titulo: string
   resumen: string
   adjuntoResumen: File | null
+  escalaResumenAncho: number
+  escalaResumenAlto: number
   comprobantes: BloqueAdjunto[]
   facturaciones: BloqueAdjunto[]
   /**
@@ -86,7 +91,8 @@ export function crearBloqueAdjunto(
     etiqueta,
     texto: '',
     adjunto: null,
-    escala: 100,
+    escalaAncho: 100,
+    escalaAlto: 100,
     estilo: { ...estiloFuenteInicial, tamanio: 12, negrita: true },
   }
 }
@@ -99,7 +105,8 @@ export function crearBloqueEstadoCuenta(
     texto: '',
     detalle: '',
     adjunto: null,
-    escala: 100,
+    escalaAncho: 100,
+    escalaAlto: 100,
     estilo: { ...estiloFuenteInicial, tamanio: 12, negrita: true },
     estiloDetalle: { ...estiloFuenteInicial, tamanio: 11 },
   }
@@ -121,6 +128,8 @@ export const formularioInicial: DatosFormulario = {
   titulo: 'Mi monotributo',
   resumen: '',
   adjuntoResumen: null,
+  escalaResumenAncho: 100,
+  escalaResumenAlto: 100,
   comprobantes: [crearBloqueAdjunto(ETIQUETA_PAGO_ARCA, 'pago-arca')],
   facturaciones: [crearBloqueAdjunto(ETIQUETA_FACTURACION, 'facturacion-1')],
   textoSinFacturacion: 'SIN FACTURACION',

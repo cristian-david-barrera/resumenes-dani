@@ -15,7 +15,8 @@ import {
 export type AjusteComprobantePreview = {
   id: string
   tipo: string
-  escala: number
+  escalaAncho: number
+  escalaAlto: number
 }
 
 export type HistorialEditando = {
@@ -34,7 +35,11 @@ type Props = {
   historialEditando?: HistorialEditando | null
   regenerando?: boolean
   ajustesComprobantes: AjusteComprobantePreview[]
-  onEscalaComprobanteChange: (id: string, escala: number) => void
+  onEscalaComprobanteChange: (
+    id: string,
+    eje: 'ancho' | 'alto',
+    valor: number,
+  ) => void
   onCerrar: () => void
   onGuardadoEnHistorial?: () => void
 }
@@ -56,9 +61,9 @@ export function ModalVistaPreviaPdf({
   onCerrar,
   onGuardadoEnHistorial,
 }: Props) {
-  const [escalasLocales, setEscalasLocales] = useState<Record<string, number>>(
-    {},
-  )
+  const [escalasLocales, setEscalasLocales] = useState<
+    Record<string, { ancho: number; alto: number }>
+  >({})
   const [panelTamanosAbierto, setPanelTamanosAbierto] = useState(false)
   const [nombreHistorial, setNombreHistorial] = useState('')
   const [carpetas, setCarpetas] = useState<PdfCarpeta[]>([])
@@ -69,9 +74,12 @@ export function ModalVistaPreviaPdf({
   const [errorLocal, setErrorLocal] = useState<string | null>(null)
 
   useEffect(() => {
-    const mapa: Record<string, number> = {}
+    const mapa: Record<string, { ancho: number; alto: number }> = {}
     for (const item of ajustesComprobantes) {
-      mapa[item.id] = item.escala
+      mapa[item.id] = {
+        ancho: item.escalaAncho,
+        alto: item.escalaAlto,
+      }
     }
     setEscalasLocales(mapa)
   }, [ajustesComprobantes, abierto])
@@ -206,47 +214,101 @@ export function ModalVistaPreviaPdf({
         {panelTamanosAbierto && ajustesComprobantes.length > 0 ? (
           <div className="ajustes-comprobantes">
             <p className="ajuste-comprobante-ayuda">
-              Ajustá el tamaño de cada comprobante por separado. Al soltar se
-              actualiza la vista previa.
+              Ajustá ancho y alto por separado. Al 100% usa el máximo de la
+              página. Al soltar se actualiza la vista previa.
             </p>
             {ajustesComprobantes.map((item) => {
-              const escala = escalasLocales[item.id] ?? item.escala
-              const inputId = `escala-comprobante-${item.id}`
+              const escala = escalasLocales[item.id] ?? {
+                ancho: item.escalaAncho,
+                alto: item.escalaAlto,
+              }
+              const idAncho = `escala-ancho-${item.id}`
+              const idAlto = `escala-alto-${item.id}`
               return (
                 <div key={item.id} className="ajuste-comprobante">
-                  <label htmlFor={inputId}>
-                    {etiquetaComprobante(item.tipo)}:{' '}
-                    <strong>{escala}%</strong>
+                  <strong className="ajuste-comprobante-titulo">
+                    {etiquetaComprobante(item.tipo)}
+                  </strong>
+                  <label htmlFor={idAncho}>
+                    Ancho: <strong>{escala.ancho}%</strong>
                   </label>
                   <input
-                    id={inputId}
+                    id={idAncho}
                     type="range"
                     min={30}
                     max={100}
                     step={5}
-                    value={escala}
+                    value={escala.ancho}
                     disabled={regenerando}
                     onChange={(e) =>
                       setEscalasLocales((prev) => ({
                         ...prev,
-                        [item.id]: Number(e.target.value),
+                        [item.id]: {
+                          ancho: Number(e.target.value),
+                          alto: prev[item.id]?.alto ?? item.escalaAlto,
+                        },
                       }))
                     }
                     onMouseUp={(e) =>
                       onEscalaComprobanteChange(
                         item.id,
+                        'ancho',
                         Number(e.currentTarget.value),
                       )
                     }
                     onTouchEnd={(e) =>
                       onEscalaComprobanteChange(
                         item.id,
+                        'ancho',
                         Number(e.currentTarget.value),
                       )
                     }
                     onKeyUp={(e) =>
                       onEscalaComprobanteChange(
                         item.id,
+                        'ancho',
+                        Number(e.currentTarget.value),
+                      )
+                    }
+                  />
+                  <label htmlFor={idAlto}>
+                    Alto: <strong>{escala.alto}%</strong>
+                  </label>
+                  <input
+                    id={idAlto}
+                    type="range"
+                    min={30}
+                    max={100}
+                    step={5}
+                    value={escala.alto}
+                    disabled={regenerando}
+                    onChange={(e) =>
+                      setEscalasLocales((prev) => ({
+                        ...prev,
+                        [item.id]: {
+                          ancho: prev[item.id]?.ancho ?? item.escalaAncho,
+                          alto: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    onMouseUp={(e) =>
+                      onEscalaComprobanteChange(
+                        item.id,
+                        'alto',
+                        Number(e.currentTarget.value),
+                      )
+                    }
+                    onTouchEnd={(e) =>
+                      onEscalaComprobanteChange(
+                        item.id,
+                        'alto',
+                        Number(e.currentTarget.value),
+                      )
+                    }
+                    onKeyUp={(e) =>
+                      onEscalaComprobanteChange(
+                        item.id,
+                        'alto',
                         Number(e.currentTarget.value),
                       )
                     }

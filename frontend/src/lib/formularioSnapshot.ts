@@ -14,13 +14,28 @@ export type ArchivoGuardado = {
   bytes: ArrayBuffer
 }
 
-type BloqueAdjuntoGuardado = Omit<BloqueAdjunto, 'adjunto'> & {
-  adjunto: ArchivoGuardado | null
+type EscalasGuardadas = {
+  escalaAncho: number
+  escalaAlto: number
+  /** Compatibilidad con historial viejo. */
+  escala?: number
 }
 
-type BloqueEstadoCuentaGuardado = Omit<BloqueEstadoCuenta, 'adjunto'> & {
-  adjunto: ArchivoGuardado | null
-}
+type BloqueAdjuntoGuardado = Omit<
+  BloqueAdjunto,
+  'adjunto' | 'escalaAncho' | 'escalaAlto'
+> &
+  EscalasGuardadas & {
+    adjunto: ArchivoGuardado | null
+  }
+
+type BloqueEstadoCuentaGuardado = Omit<
+  BloqueEstadoCuenta,
+  'adjunto' | 'escalaAncho' | 'escalaAlto'
+> &
+  EscalasGuardadas & {
+    adjunto: ArchivoGuardado | null
+  }
 
 /** Snapshot serializable del formulario para poder reeditar un PDF del historial. */
 export type DatosFormularioGuardado = {
@@ -29,6 +44,8 @@ export type DatosFormularioGuardado = {
   titulo: string
   resumen: string
   adjuntoResumen: ArchivoGuardado | null
+  escalaResumenAncho?: number
+  escalaResumenAlto?: number
   comprobantes: BloqueAdjuntoGuardado[]
   facturaciones: BloqueAdjuntoGuardado[]
   textoSinFacturacion: string
@@ -58,6 +75,20 @@ function clonarEstilo(estilo: EstiloFuente): EstiloFuente {
   return { ...estilo }
 }
 
+function leerEscalas(origen: EscalasGuardadas): {
+  escalaAncho: number
+  escalaAlto: number
+} {
+  if (
+    typeof origen.escalaAncho === 'number' &&
+    typeof origen.escalaAlto === 'number'
+  ) {
+    return { escalaAncho: origen.escalaAncho, escalaAlto: origen.escalaAlto }
+  }
+  const legacy = typeof origen.escala === 'number' ? origen.escala : 100
+  return { escalaAncho: legacy, escalaAlto: legacy }
+}
+
 export async function serializarFormulario(
   datos: DatosFormulario,
 ): Promise<DatosFormularioGuardado> {
@@ -67,12 +98,15 @@ export async function serializarFormulario(
     titulo: datos.titulo,
     resumen: datos.resumen,
     adjuntoResumen: await serializarArchivo(datos.adjuntoResumen),
+    escalaResumenAncho: datos.escalaResumenAncho,
+    escalaResumenAlto: datos.escalaResumenAlto,
     comprobantes: await Promise.all(
       datos.comprobantes.map(async (bloque) => ({
         id: bloque.id,
         etiqueta: bloque.etiqueta,
         texto: bloque.texto,
-        escala: bloque.escala,
+        escalaAncho: bloque.escalaAncho,
+        escalaAlto: bloque.escalaAlto,
         estilo: clonarEstilo(bloque.estilo),
         adjunto: await serializarArchivo(bloque.adjunto),
       })),
@@ -82,7 +116,8 @@ export async function serializarFormulario(
         id: bloque.id,
         etiqueta: bloque.etiqueta,
         texto: bloque.texto,
-        escala: bloque.escala,
+        escalaAncho: bloque.escalaAncho,
+        escalaAlto: bloque.escalaAlto,
         estilo: clonarEstilo(bloque.estilo),
         adjunto: await serializarArchivo(bloque.adjunto),
       })),
@@ -93,7 +128,8 @@ export async function serializarFormulario(
         id: bloque.id,
         texto: bloque.texto,
         detalle: bloque.detalle,
-        escala: bloque.escala,
+        escalaAncho: bloque.escalaAncho,
+        escalaAlto: bloque.escalaAlto,
         estilo: clonarEstilo(bloque.estilo),
         estiloDetalle: clonarEstilo(bloque.estiloDetalle),
         adjunto: await serializarArchivo(bloque.adjunto),
@@ -117,7 +153,7 @@ export function deserializarFormulario(
           id: bloque.id,
           etiqueta: bloque.etiqueta,
           texto: bloque.texto,
-          escala: bloque.escala,
+          ...leerEscalas(bloque),
           estilo: clonarEstilo(bloque.estilo),
           adjunto: archivoDesdeGuardado(bloque.adjunto),
         }))
@@ -129,7 +165,7 @@ export function deserializarFormulario(
           id: bloque.id,
           etiqueta: bloque.etiqueta,
           texto: bloque.texto,
-          escala: bloque.escala,
+          ...leerEscalas(bloque),
           estilo: clonarEstilo(bloque.estilo),
           adjunto: archivoDesdeGuardado(bloque.adjunto),
         }))
@@ -141,7 +177,7 @@ export function deserializarFormulario(
           id: bloque.id,
           texto: bloque.texto,
           detalle: bloque.detalle,
-          escala: bloque.escala,
+          ...leerEscalas(bloque),
           estilo: clonarEstilo(bloque.estilo),
           estiloDetalle: clonarEstilo(bloque.estiloDetalle),
           adjunto: archivoDesdeGuardado(bloque.adjunto),
@@ -153,6 +189,8 @@ export function deserializarFormulario(
     titulo: guardado.titulo,
     resumen: guardado.resumen,
     adjuntoResumen: archivoDesdeGuardado(guardado.adjuntoResumen),
+    escalaResumenAncho: guardado.escalaResumenAncho ?? 100,
+    escalaResumenAlto: guardado.escalaResumenAlto ?? 100,
     comprobantes:
       comprobantes.length > 0
         ? comprobantes

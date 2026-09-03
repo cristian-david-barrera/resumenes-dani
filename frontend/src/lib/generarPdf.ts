@@ -146,25 +146,38 @@ function esArchivoPdf(archivo: File): boolean {
   )
 }
 
+function fraccionEscala(escalaPct: number): number {
+  return Math.min(1, Math.max(0.3, escalaPct / 100))
+}
+
+/** Alto máximo al 100% (antes 120 mm): casi el cuerpo útil de la hoja. */
+const ALTO_MAX_ADJUNTO_MM = 200
+
 function medirContenidoAdjunto(
   origWidth: number,
   origHeight: number,
   pageWidth: number,
   marginLeft: number,
   marginRight: number,
-  escalaPct: number,
+  escalaAnchoPct: number,
+  escalaAltoPct: number,
+  maxHeightBase: number = mmToPt(ALTO_MAX_ADJUNTO_MM),
 ): { width: number; height: number } {
-  const escala = Math.min(1, Math.max(0.3, escalaPct / 100))
-  const maxWidth = (pageWidth - marginLeft - marginRight) * escala
-  const maxHeight = mmToPt(120) * escala
+  // Al 100% usa todo el ancho útil; el alto llega hasta ALTO_MAX_ADJUNTO_MM.
+  const baseMaxW = pageWidth - marginLeft - marginRight
+  const baseMaxH = Math.max(mmToPt(20), maxHeightBase)
   const ratio = origWidth / Math.max(origHeight, 1)
-  let width = maxWidth
+  let width = baseMaxW
   let height = width / ratio
 
-  if (height > maxHeight) {
-    height = maxHeight
+  if (height > baseMaxH) {
+    height = baseMaxH
     width = height * ratio
   }
+
+  // Escalas independientes: permiten achicar ancho y alto por separado.
+  width *= fraccionEscala(escalaAnchoPct)
+  height *= fraccionEscala(escalaAltoPct)
 
   return { width, height }
 }
@@ -174,7 +187,9 @@ function medirImagen(
   pageWidth: number,
   marginLeft: number,
   marginRight: number,
-  escalaPct: number,
+  escalaAnchoPct: number,
+  escalaAltoPct: number,
+  maxHeightBase?: number,
 ): { width: number; height: number } {
   return medirContenidoAdjunto(
     imagen.width,
@@ -182,7 +197,9 @@ function medirImagen(
     pageWidth,
     marginLeft,
     marginRight,
-    escalaPct,
+    escalaAnchoPct,
+    escalaAltoPct,
+    maxHeightBase,
   )
 }
 
@@ -311,7 +328,8 @@ export async function generarPdf(
 
   async function prepararImagenesAdjunto(
     adjunto: File | null,
-    escala: number,
+    escalaAncho: number,
+    escalaAlto: number,
   ): Promise<ImagenLista[]> {
     if (!adjunto) return []
 
@@ -325,7 +343,8 @@ export async function generarPdf(
         pageWidth,
         marginLeft,
         marginRight,
-        escala,
+        escalaAncho,
+        escalaAlto,
       )
       return [{ imagen, ...dims }]
     }
@@ -341,7 +360,8 @@ export async function generarPdf(
             pageWidth,
             marginLeft,
             marginRight,
-            escala,
+            escalaAncho,
+            escalaAlto,
           )
           listas.push({ imagen, ...dims })
         }
@@ -403,21 +423,45 @@ export async function generarPdf(
 
   async function dibujarImagenLista(
     item: ImagenLista,
-    opciones?: { centrado?: boolean; permitirSalto?: boolean },
+    opciones?: {
+      centrado?: boolean
+      permitirSalto?: boolean
+      /** Si true, al 100% el adjunto usa todo el alto y ancho útiles de la página. */
+      llenarPagina?: boolean
+      escalaAncho?: number
+      escalaAlto?: number
+    },
   ) {
+    const permitirSalto = opciones?.permitirSalto !== false
+    const escalaAncho = opciones?.escalaAncho ?? 100
+    const escalaAlto = opciones?.escalaAlto ?? 100
     let imgWidth = item.width
     let imgHeight = item.height
-    const permitirSalto = opciones?.permitirSalto !== false
 
-    if (permitirSalto) {
-      await asegurarEspacio(imgHeight + mmToPt(6))
-    }
+    if (opciones?.llenarPagina) {
+      const disponible = Math.max(mmToPt(20), espacioDisponible() - mmToPt(4))
+      const dims = medirImagen(
+        item.imagen,
+        pageWidth,
+        marginLeft,
+        marginRight,
+        escalaAncho,
+        escalaAlto,
+        disponible,
+      )
+      imgWidth = dims.width
+      imgHeight = dims.height
+    } else {
+      if (permitirSalto) {
+        await asegurarEspacio(imgHeight + mmToPt(6))
+      }
 
-    const disponible = espacioDisponible() - mmToPt(6)
-    if (imgHeight > disponible && disponible > mmToPt(20)) {
-      const factor = disponible / imgHeight
-      imgHeight *= factor
-      imgWidth *= factor
+      const disponible = espacioDisponible() - mmToPt(6)
+      if (imgHeight > disponible && disponible > mmToPt(20)) {
+        const factor = disponible / imgHeight
+        imgHeight *= factor
+        imgWidth *= factor
+      }
     }
 
     const xImg = opciones?.centrado
@@ -443,14 +487,23 @@ export async function generarPdf(
     adjunto: File | null
     estiloFallbackAdjunto: EstiloFuente
     centradoAdjunto?: boolean
-    escala?: number
+    escalaAncho?: number
+    escalaAlto?: number
     paddingSuperior?: number
     textoSinAdjunto?: string
     estiloSinAdjunto?: EstiloFuente
+    /** El adjunto al 100% ocupa el resto de la página (ancho y alto útiles). */
+    llenarPagina?: boolean
   }) {
     const padding = opciones.paddingSuperior ?? mmToPt(8)
-    const escala = opciones.escala ?? 100
-    const imagenes = await prepararImagenesAdjunto(opciones.adjunto, escala)
+    const escalaAncho = opciones.escalaAncho ?? 100
+    const escalaAlto = opciones.escalaAlto ?? 100
+    const llenarPagina = Boolean(opciones.llenarPagina)
+    const imagenes = await prepararImagenesAdjunto(
+      opciones.adjunto,
+      escalaAncho,
+      escalaAlto,
+    )
 
     let altura = padding
     for (const item of opciones.textos) {
@@ -458,8 +511,14 @@ export async function generarPdf(
       altura += item.gapDespues ?? mmToPt(2)
     }
 
-    if (imagenes.length > 0) {
-      altura += imagenes[0]!.height + mmToPt(6)
+    if (imagenes.length > 0 && llenarPagina) {
+      if (yTop > marginTop + mmToPt(2)) {
+        await nuevaPagina()
+      }
+    } else if (imagenes.length > 0) {
+      // No forzar salto: si el 100% no entra, se achica al espacio libre.
+      const libre = Math.max(mmToPt(20), espacioDisponible() - altura - mmToPt(6))
+      altura += Math.min(imagenes[0]!.height, libre) + mmToPt(6)
     } else if (
       opciones.textoSinAdjunto?.trim() &&
       opciones.estiloSinAdjunto &&
@@ -474,7 +533,9 @@ export async function generarPdf(
       altura += mmToPt(14)
     }
 
-    await asegurarEspacio(altura)
+    if (!(imagenes.length > 0 && llenarPagina)) {
+      await asegurarEspacio(altura)
+    }
     yTop += padding
 
     for (const item of opciones.textos) {
@@ -489,11 +550,20 @@ export async function generarPdf(
       await dibujarImagenLista(imagenes[0]!, {
         centrado: opciones.centradoAdjunto,
         permitirSalto: false,
+        llenarPagina,
+        escalaAncho,
+        escalaAlto,
       })
       for (let i = 1; i < imagenes.length; i += 1) {
+        if (llenarPagina) {
+          await nuevaPagina()
+        }
         await dibujarImagenLista(imagenes[i]!, {
           centrado: opciones.centradoAdjunto,
-          permitirSalto: true,
+          permitirSalto: !llenarPagina,
+          llenarPagina,
+          escalaAncho,
+          escalaAlto,
         })
       }
       return
@@ -552,7 +622,9 @@ export async function generarPdf(
         adjunto: bloque.adjunto,
         estiloFallbackAdjunto: bloque.estilo,
         centradoAdjunto: true,
-        escala: bloque.escala,
+        escalaAncho: bloque.escalaAncho,
+        escalaAlto: bloque.escalaAlto,
+        llenarPagina: Boolean(bloque.adjunto),
         textoSinAdjunto: mostrarTextoSinAdjunto
           ? opciones?.textoSinAdjunto
           : undefined,
@@ -585,7 +657,12 @@ export async function generarPdf(
     textos: [{ texto: textoResumen, estilo: datos.estilos.resumen }],
     adjunto: datos.adjuntoResumen,
     estiloFallbackAdjunto: datos.estilos.resumen,
+    centradoAdjunto: true,
     paddingSuperior: 0,
+    escalaAncho: datos.escalaResumenAncho,
+    escalaAlto: datos.escalaResumenAlto,
+    // RESUMEN va debajo del título en la misma página (no ocupa página completa).
+    llenarPagina: false,
   })
 
   await dibujarBloques(datos.comprobantes)
@@ -623,7 +700,10 @@ export async function generarPdf(
       textos,
       adjunto: estado.adjunto,
       estiloFallbackAdjunto: estado.estiloDetalle,
-      escala: estado.escala,
+      centradoAdjunto: true,
+      escalaAncho: estado.escalaAncho,
+      escalaAlto: estado.escalaAlto,
+      llenarPagina: Boolean(estado.adjunto),
     })
   }
 
