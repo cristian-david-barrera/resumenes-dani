@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { deserializarFormulario } from '../lib/formularioSnapshot'
+import { deserializarFormulario, listarAdjuntosPerdidos } from '../lib/formularioSnapshot'
 import { descargarPdf } from '../lib/generarPdf'
 import {
   contarPdfsPorCarpeta,
@@ -18,7 +18,11 @@ import type { PdfCarpeta, PdfHistorialMeta } from '../types/historialPdf'
 type Props = {
   abierto: boolean
   onCerrar: () => void
-  onEditar: (datos: DatosFormulario, meta: PdfHistorialMeta) => void
+  onEditar: (
+    datos: DatosFormulario,
+    meta: PdfHistorialMeta,
+    adjuntosPerdidos?: string[],
+  ) => void
 }
 
 function formatearFecha(ms: number): string {
@@ -250,16 +254,21 @@ export function ModalHistorialPdf({ abierto, onCerrar, onEditar }: Props) {
         return
       }
       const datos = deserializarFormulario(item.datosFormulario)
-      onEditar(datos, {
-        id: item.id,
-        carpetaId: item.carpetaId ?? null,
-        nombre: item.nombre,
-        nombreArchivo: item.nombreArchivo,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        tamanioBytes: item.bytes.byteLength,
-        editable: true,
-      })
+      const adjuntosPerdidos = listarAdjuntosPerdidos(item.datosFormulario)
+      onEditar(
+        datos,
+        {
+          id: item.id,
+          carpetaId: item.carpetaId ?? null,
+          nombre: item.nombre,
+          nombreArchivo: item.nombreArchivo,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          tamanioBytes: item.bytes.byteLength,
+          editable: true,
+        },
+        adjuntosPerdidos,
+      )
       onCerrar()
     } catch (err) {
       setError(

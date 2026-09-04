@@ -47,6 +47,21 @@ type AdjuntoActivo =
   | { tipo: 'estadoCuenta'; id: string }
   | { tipo: 'bloque'; grupo: GrupoBloque; id: string }
 
+function mensajeError(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.trim()) return err.message
+  if (typeof err === 'string' && err.trim()) return err
+  if (
+    err &&
+    typeof err === 'object' &&
+    'message' in err &&
+    typeof (err as { message: unknown }).message === 'string'
+  ) {
+    const texto = (err as { message: string }).message.trim()
+    if (texto) return texto
+  }
+  return fallback
+}
+
 function aplicarEstilosGuardados(
   bloques: BloqueAdjunto[],
   estilosGuardados: Record<string, EstiloFuente>,
@@ -99,6 +114,7 @@ function App() {
     nombre: string
     carpetaId: string | null
   } | null>(null)
+  const [avisoAdjuntos, setAvisoAdjuntos] = useState<string | null>(null)
 
   useEffect(() => {
     guardarEstilos(datos.estilos)
@@ -222,6 +238,7 @@ function App() {
   function cargarDesdeHistorial(
     datosHistorial: DatosFormulario,
     meta: { id: string; nombre: string; carpetaId: string | null },
+    adjuntosPerdidos: string[] = [],
   ) {
     setDatos(datosHistorial)
     setHistorialEditando({
@@ -231,6 +248,11 @@ function App() {
     })
     setFuenteAbierta(null)
     setError(null)
+    setAvisoAdjuntos(
+      adjuntosPerdidos.length > 0
+        ? `No se pudieron recuperar estos adjuntos: ${adjuntosPerdidos.join(', ')}. Volvé a cargarlos antes de generar el PDF.`
+        : null,
+    )
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -255,8 +277,7 @@ function App() {
     try {
       await generarVistaPrevia(datos)
     } catch (err) {
-      const crudo =
-        err instanceof Error ? err.message : 'No se pudo generar el PDF'
+      const crudo = mensajeError(err, 'No se pudo generar el PDF')
       const message = /flate stream|compression method/i.test(crudo)
         ? 'No se pudo leer ese PDF adjunto. Probá con otro archivo o una captura/imagen.'
         : crudo
@@ -312,10 +333,10 @@ function App() {
     try {
       await generarVistaPrevia(siguientes)
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'No se pudo actualizar la vista previa'
+      const message = mensajeError(
+        err,
+        'No se pudo actualizar la vista previa',
+      )
       setError(message)
     } finally {
       setRegenerandoPreview(false)
@@ -488,10 +509,14 @@ function App() {
             <button
               type="button"
               className="btn ghost"
-              onClick={() => setHistorialEditando(null)}
+              onClick={() => {
+                setHistorialEditando(null)
+                setAvisoAdjuntos(null)
+              }}
             >
               Dejar de editar (guardar como nuevo)
             </button>
+            {avisoAdjuntos ? <p>{avisoAdjuntos}</p> : null}
           </div>
         ) : null}
         <form className="formulario" onSubmit={finalizar}>
@@ -779,8 +804,8 @@ function App() {
       <ModalHistorialPdf
         abierto={modalHistorialAbierto}
         onCerrar={() => setModalHistorialAbierto(false)}
-        onEditar={(datosHistorial, meta) => {
-          cargarDesdeHistorial(datosHistorial, meta)
+        onEditar={(datosHistorial, meta, adjuntosPerdidos) => {
+          cargarDesdeHistorial(datosHistorial, meta, adjuntosPerdidos)
         }}
       />
 

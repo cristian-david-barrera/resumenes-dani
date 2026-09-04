@@ -20,6 +20,83 @@ import { rasterizarPdfAPngs } from './rasterizarPdf'
 
 type Variante = 'normal' | 'bold' | 'italic' | 'bolditalic'
 
+function pareceFuente(bytes: ArrayBuffer): boolean {
+  const u = new Uint8Array(bytes)
+  if (u.length < 4) return false
+  const a = u[0]
+  const b = u[1]
+  const c = u[2]
+  const d = u[3]
+  if (a === 0x00 && b === 0x01 && c === 0x00 && d === 0x00) return true
+  if (a === 0x4f && b === 0x54 && c === 0x54 && d === 0x4f) return true
+  if (a === 0x77 && b === 0x4f && c === 0x46 && d === 0x46) return true
+  if (a === 0x74 && b === 0x74 && c === 0x63 && d === 0x66) return true
+  return false
+}
+
+function textoEncodable(texto: string, font: PDFFont, size: number): string {
+  const reemplazos: Array<[RegExp, string]> = [
+    [/[–—―]/g, '-'],
+    [/[‘’‚‛]/g, "'"],
+    [/[“”„‟]/g, '"'],
+    [/…/g, '...'],
+    [/•/g, '*'],
+  ]
+  let limpio = texto
+  for (const [patron, por] of reemplazos) {
+    limpio = limpio.replace(patron, por)
+  }
+  try {
+    font.widthOfTextAtSize(limpio, size)
+    return limpio
+  } catch {
+    let resultado = ''
+    for (const ch of limpio) {
+      try {
+        font.widthOfTextAtSize(ch, size)
+        resultado += ch
+      } catch {
+        resultado += '?'
+      }
+    }
+    return resultado
+  }
+}
+
+function copiarBytes(origen: ArrayBuffer): ArrayBuffer {
+  return origen.slice(0)
+}
+
+async function rasterizarImagenAPng(archivo: File): Promise<Uint8Array> {
+  const url = URL.createObjectURL(archivo)
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = () =>
+        reject(new Error('No se pudo leer la imagen adjunta'))
+      el.src = url
+    })
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, img.naturalWidth || img.width)
+    canvas.height = Math.max(1, img.naturalHeight || img.height)
+    const context = canvas.getContext('2d')
+    if (!context) {
+      throw new Error('No se pudo preparar el canvas para la imagen')
+    }
+    context.drawImage(img, 0, 0)
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((resultado) => resolve(resultado), 'image/png')
+    })
+    if (!blob) {
+      throw new Error('No se pudo convertir la imagen adjunta')
+    }
+    return new Uint8Array(await blob.arrayBuffer())
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
 function hexARgb(hex: string): { r: number; g: number; b: number } {
   const limpio = hex.replace('#', '')
   const full =
@@ -53,9 +130,10 @@ async function cargarBytesFuente(
   if (!url) return null
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(`No se pudo cargar la fuente ${familia}`)
+    return null
   }
-  return response.arrayBuffer()
+  const buffer = await response.arrayBuffer()
+  return pareceFuente(buffer) ? buffer : null
 }
 
 async function obtenerFuente(
@@ -69,6 +147,11 @@ async function obtenerFuente(
   if (cached) return cached
 
   const def = definicionFuentes[estilo.familia]
+  if (!def) {
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    cache.set(clave, font)
+    return font
+  }
   if (def.nativa) {
     const standard =
       estilo.familia === 'times'
@@ -97,14 +180,18 @@ async function obtenerFuente(
     return font
   }
 
-  const bytes = await cargarBytesFuente(estilo.familia, variante)
-  if (!bytes) {
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
-    cache.set(clave, font)
-    return font
+  try {
+    const bytes = await cargarBytesFuente(estilo.familia, variante)
+    if (bytes && pareceFuente(bytes)) {
+      const font = await pdfDoc.embedFont(bytes)
+      cache.set(clave, font)
+      return font
+    }
+  } catch {
+    /* Helvetica de respaldo */
   }
 
-  const font = await pdfDoc.embedFont(bytes)
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
   cache.set(clave, font)
   return font
 }
@@ -115,7 +202,7 @@ function wrapText(
   size: number,
   maxWidth: number,
 ): string[] {
-  const words = text.split(/\s+/).filter(Boolean)
+  const words = textoEncodable(text, font, size).split(/\s+/).filter(Boolean)
   if (words.length === 0) return ['']
 
   const lines: string[] = []
@@ -212,20 +299,26 @@ async function crearDocumentoBase(plantilla?: Plantilla | null): Promise<{
   esPlantillaPdf: boolean
 }> {
   if (plantilla?.mimeType === 'application/pdf') {
-    const pdfDoc = await PDFDocument.load(plantilla.bytes)
-    pdfDoc.registerFontkit(fontkit)
-    const page = pdfDoc.getPages()[0]
-    if (!page) {
-      throw new Error('La plantilla PDF no tiene páginas')
-    }
-    const { width, height } = page.getSize()
-    return {
-      pdfDoc,
-      page,
-      pageWidth: width,
-      pageHeight: height,
-      fondoImagen: null,
-      esPlantillaPdf: true,
+    try {
+      const pdfDoc = await PDFDocument.load(copiarBytes(plantilla.bytes), {
+        ignoreEncryption: true,
+      })
+      pdfDoc.registerFontkit(fontkit)
+      const page = pdfDoc.getPages()[0]
+      if (!page) {
+        throw new Error('La plantilla PDF no tiene páginas')
+      }
+      const { width, height } = page.getSize()
+      return {
+        pdfDoc,
+        page,
+        pageWidth: width,
+        pageHeight: height,
+        fondoImagen: null,
+        esPlantillaPdf: true,
+      }
+    } catch {
+      /* Se rasteriza más abajo como imagen de fondo. */
     }
   }
 
@@ -236,11 +329,30 @@ async function crearDocumentoBase(plantilla?: Plantilla | null): Promise<{
   let fondoImagen: PDFImage | null = null
 
   if (plantilla?.mimeType.startsWith('image/')) {
-    const bytes = new Uint8Array(plantilla.bytes)
-    fondoImagen = plantilla.mimeType.includes('png')
-      ? await pdfDoc.embedPng(bytes)
-      : await pdfDoc.embedJpg(bytes)
+    try {
+      const bytes = new Uint8Array(plantilla.bytes)
+      fondoImagen = plantilla.mimeType.includes('png')
+        ? await pdfDoc.embedPng(bytes)
+        : await pdfDoc.embedJpg(bytes)
+    } catch {
+      const archivo = new File([plantilla.bytes], plantilla.nombre, {
+        type: plantilla.mimeType,
+      })
+      fondoImagen = await pdfDoc.embedPng(await rasterizarImagenAPng(archivo))
+    }
+  } else if (plantilla?.mimeType === 'application/pdf') {
+    try {
+      const pngs = await rasterizarPdfAPngs(copiarBytes(plantilla.bytes))
+      const primero = pngs[0]
+      if (primero) {
+        fondoImagen = await pdfDoc.embedPng(primero)
+      }
+    } catch {
+      fondoImagen = null
+    }
+  }
 
+  if (fondoImagen) {
     page.drawImage(fondoImagen, {
       x: 0,
       y: 0,
@@ -282,9 +394,24 @@ export async function generarPdf(
 
   async function nuevaPagina() {
     if (esPlantillaPdf) {
-      const plantillaOriginal = await PDFDocument.load(plantilla!.bytes)
-      const [copia] = await pdfDoc.copyPages(plantillaOriginal, [0])
-      page = pdfDoc.addPage(copia)
+      try {
+        const plantillaOriginal = await PDFDocument.load(
+          copiarBytes(plantilla!.bytes),
+          { ignoreEncryption: true },
+        )
+        const [copia] = await pdfDoc.copyPages(plantillaOriginal, [0])
+        page = pdfDoc.addPage(copia)
+    } catch {
+      page = pdfDoc.addPage([pageWidth, pageHeight])
+      if (fondoImagen) {
+        page.drawImage(fondoImagen, {
+          x: 0,
+          y: 0,
+          width: pageWidth,
+          height: pageHeight,
+        })
+      }
+    }
     } else {
       page = pdfDoc.addPage([pageWidth, pageHeight])
       if (fondoImagen) {
@@ -334,19 +461,30 @@ export async function generarPdf(
     if (!adjunto) return []
 
     if (adjunto.type.startsWith('image/')) {
-      const bytes = new Uint8Array(await adjunto.arrayBuffer())
-      const imagen = adjunto.type.includes('png')
-        ? await pdfDoc.embedPng(bytes)
-        : await pdfDoc.embedJpg(bytes)
-      const dims = medirImagen(
-        imagen,
-        pageWidth,
-        marginLeft,
-        marginRight,
-        escalaAncho,
-        escalaAlto,
-      )
-      return [{ imagen, ...dims }]
+      try {
+        const bytes = new Uint8Array(await adjunto.arrayBuffer())
+        let imagen: PDFImage
+        try {
+          imagen = adjunto.type.includes('png')
+            ? await pdfDoc.embedPng(bytes)
+            : adjunto.type.includes('jpeg') || adjunto.type.includes('jpg')
+              ? await pdfDoc.embedJpg(bytes)
+              : await pdfDoc.embedPng(await rasterizarImagenAPng(adjunto))
+        } catch {
+          imagen = await pdfDoc.embedPng(await rasterizarImagenAPng(adjunto))
+        }
+        const dims = medirImagen(
+          imagen,
+          pageWidth,
+          marginLeft,
+          marginRight,
+          escalaAncho,
+          escalaAlto,
+        )
+        return [{ imagen, ...dims }]
+      } catch {
+        return []
+      }
     }
 
     if (esArchivoPdf(adjunto)) {
@@ -724,7 +862,7 @@ export async function generarPdf(
   }
 
   const pdfBytes = await pdfDoc.save()
-  const blob = new Blob([Uint8Array.from(pdfBytes)], {
+  const blob = new Blob([pdfBytes.slice()], {
     type: 'application/pdf',
   })
   const url = URL.createObjectURL(blob)

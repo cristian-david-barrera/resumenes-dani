@@ -11,7 +11,10 @@ import {
 export type ArchivoGuardado = {
   name: string
   type: string
-  bytes: ArrayBuffer
+  /** Contenido en base64 (JSON no puede guardar un ArrayBuffer). */
+  bytesBase64?: string
+  /** Historial viejo / IndexedDB: puede venir vacío tras JSON.stringify. */
+  bytes?: ArrayBuffer | unknown
 }
 
 type EscalasGuardadas = {
@@ -54,6 +57,63 @@ export type DatosFormularioGuardado = {
   estilos: DatosFormulario['estilos']
 }
 
+function arrayBufferABase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binario = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binario)
+}
+
+function base64AArrayBuffer(base64: string): ArrayBuffer {
+  const binario = atob(base64)
+  const bytes = new Uint8Array(binario.length)
+  for (let i = 0; i < binario.length; i += 1) {
+    bytes[i] = binario.charCodeAt(i)
+  }
+  return bytes.buffer
+}
+
+function bytesDesdeObjetoNumerico(valor: object): ArrayBuffer | null {
+  const rec = valor as Record<string, unknown>
+  const keys = Object.keys(rec)
+  if (keys.length === 0 || !keys.every((k) => /^\d+$/.test(k))) return null
+  const out = new Uint8Array(keys.length)
+  for (let i = 0; i < keys.length; i += 1) {
+    const n = rec[String(i)]
+    if (typeof n !== 'number') return null
+    out[i] = n
+  }
+  return out.buffer
+}
+
+function extraerBytesArchivo(guardado: ArchivoGuardado): ArrayBuffer | null {
+  if (typeof guardado.bytesBase64 === 'string' && guardado.bytesBase64.length > 0) {
+    try {
+      const bytes = base64AArrayBuffer(guardado.bytesBase64)
+      return bytes.byteLength > 0 ? bytes : null
+    } catch {
+      return null
+    }
+  }
+
+  const crudo = guardado.bytes
+  if (crudo instanceof ArrayBuffer) {
+    return crudo.byteLength > 0 ? crudo : null
+  }
+  if (ArrayBuffer.isView(crudo) && crudo.byteLength > 0) {
+    return new Uint8Array(crudo.buffer, crudo.byteOffset, crudo.byteLength)
+      .slice()
+      .buffer
+  }
+  if (crudo && typeof crudo === 'object') {
+    return bytesDesdeObjetoNumerico(crudo)
+  }
+  return null
+}
+
 async function serializarArchivo(
   archivo: File | null,
 ): Promise<ArchivoGuardado | null> {
@@ -61,15 +121,36 @@ async function serializarArchivo(
   return {
     name: archivo.name,
     type: archivo.type || 'application/octet-stream',
-    bytes: await archivo.arrayBuffer(),
+    bytesBase64: arrayBufferABase64(await archivo.arrayBuffer()),
   }
 }
 
 function archivoDesdeGuardado(guardado: ArchivoGuardado | null): File | null {
   if (!guardado) return null
-  return new File([guardado.bytes], guardado.name, {
-    type: guardado.type || 'application/octet-stream',
-  })
+  try {
+    const bytes = extraerBytesArchivo(guardado)
+    if (!bytes) return null
+    return new File([bytes], guardado.name || 'adjunto', {
+      type: guardado.type || 'application/octet-stream',
+    })
+  } catch {
+    return null
+  }
+}
+
+export function listarAdjuntosPerdidos(
+  guardado: DatosFormularioGuardado,
+): string[] {
+  const nombres: string[] = []
+  const revisar = (archivo: ArchivoGuardado | null) => {
+    if (!archivo?.name) return
+    if (!extraerBytesArchivo(archivo)) nombres.push(archivo.name)
+  }
+  revisar(guardado.adjuntoResumen)
+  for (const bloque of guardado.comprobantes ?? []) revisar(bloque.adjunto)
+  for (const bloque of guardado.facturaciones ?? []) revisar(bloque.adjunto)
+  for (const bloque of guardado.estadosCuenta ?? []) revisar(bloque.adjunto)
+  return nombres
 }
 
 function clonarEstilo(estilo: EstiloFuente): EstiloFuente {
